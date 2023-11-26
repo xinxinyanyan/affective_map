@@ -36,10 +36,7 @@ def extract_locations(all_paragraphs):
             for ent in doc.ents:
                 if ent.label_ in ["GPE", "LOC"]:
                     # Associate sentiment with location entity}
-                    if ent.label_ == "GPE":
-                        all_locations[i] = "GPE_" + ent.text
-                    elif ent.label_ == "LOC":
-                        all_locations[i] = "LOC_" + ent.text
+                    all_locations[i] = ent.text
 
     return all_locations
 
@@ -123,8 +120,8 @@ def main():
         cur_sentiments = sentiment_analysis(cur_book)
 
         all_results[cur_book_name] = {
-            "locations": cur_locations,
-            "sentiments": cur_sentiments,
+            "locations": cur_locations,  # {paragraph_id: location}
+            "sentiments": cur_sentiments,  # {paragraph_id: sentiment}
         }
 
     # save the results
