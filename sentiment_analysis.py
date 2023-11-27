@@ -13,22 +13,22 @@ def process_text(file_path):
         content = file.read()
 
     # Split the content by two or more newlines to handle multiple empty lines as separators
-    paragraphs = [para.strip() for para in content.split("\n\n") if para.strip()]
+    all_sentences = {
+        i: para.strip() for i, para in enumerate(content.split("\n\n")) if para.strip()
+    }
 
-    return paragraphs
+    return all_sentences
 
 
 # Function that extracts the locations and its place in the text
-def extract_locations(all_paragraphs):
+def extract_locations(all_sentences):
     # Load the pre-trained model
     nlp = spacy.load("en_core_web_sm")
     all_locations = {}
 
-    for i, cur_paragraph in enumerate(
-        tqdm(all_paragraphs, desc="Extracting locations")
-    ):
+    for i, cur_sentence in tqdm(all_sentences.items(), desc="Extracting locations"):
         # Process the text with spacy to detect entities
-        doc = nlp(cur_paragraph)
+        doc = nlp(cur_sentence)
         if doc.ents == ():
             continue
         else:
@@ -41,25 +41,21 @@ def extract_locations(all_paragraphs):
     return all_locations
 
 
-def sentiment_analysis(all_paragraphs):
+def sentiment_analysis(all_sentences):
     # initialize output
     all_sentiments = {}
-    # Load the emotion classifier pipeline from transformers
-    # emotion_pipeline = pipeline(
-    #     "text-classification",
-    #     model="distilbert-base-uncased-finetuned-sst-2-english",
-    # )
 
     # set up sentiment analysis pipeline
     emotion_pipeline = pipeline(
         "text-classification",
         model="bhadresh-savani/distilbert-base-uncased-emotion",
+        truncation=True,
         top_k=1,
     )
 
-    for i, cur_paragraph in enumerate(tqdm(all_paragraphs, desc="Analyzing sentiment")):
+    for i, cur_sentence in tqdm(all_sentences.items(), desc="Analyzing sentiment"):
         # Analyze the sentiment of the sentence
-        emotion = emotion_pipeline(cur_paragraph)
+        emotion = emotion_pipeline(cur_sentence)
         all_sentiments[i] = emotion[0][0]["label"]
 
     return all_sentiments
@@ -71,7 +67,7 @@ def main():
         "--input_dir",
         dest="input_dir",
         help="Input folder directory that contains all the texts.",
-        default="./texts/",
+        default="./texts/clean/",
     )
     parser.add_argument(
         "--output_dir",
@@ -99,7 +95,7 @@ def main():
         print(f"Output directory: {output_dir}")
 
     # get all the PDF file path from the folder
-    all_text_paths = glob.glob(input_dir + "*.txt")
+    all_text_paths = glob.glob(input_dir + "*_clean.txt")
     if verbosity:
         print(f"\nNumber of text files: {len(all_text_paths)}")
 
@@ -111,21 +107,22 @@ def main():
             print(f"\nProcessing {cur_book_name}")
 
         # break the book into paragraphs
-        cur_book = process_text(cur_path)
+        cur_book_sentences = process_text(cur_path)
 
         # perform location extraction on the entire book
-        cur_locations = extract_locations(cur_book)
+        cur_locations = extract_locations(cur_book_sentences)
 
         # perform sentiment analysis on the entire book
-        cur_sentiments = sentiment_analysis(cur_book)
+        cur_sentiments = sentiment_analysis(cur_book_sentences)
 
         all_results[cur_book_name] = {
             "locations": cur_locations,  # {paragraph_id: location}
             "sentiments": cur_sentiments,  # {paragraph_id: sentiment}
+            "sentences": cur_book_sentences,  # {paragraph_id: sentence}
         }
 
     # save the results
-    output_path = os.path.join(output_dir, "results.json")
+    output_path = os.path.join(output_dir, "all_results.json")
     with open(output_path, "w") as f:
         json.dump(all_results, f)
 
