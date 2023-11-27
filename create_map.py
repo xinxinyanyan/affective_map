@@ -9,6 +9,7 @@ from folium.plugins import MarkerCluster
 import webbrowser
 import itertools
 from tqdm import tqdm
+import time
 
 
 def main():
@@ -75,6 +76,7 @@ def main():
 
     # create a dataframe that contains all books results
     all_df = pd.DataFrame()
+    start_time = time.time()
 
     # process each book
     for i in range(len(all_results)):
@@ -125,6 +127,9 @@ def main():
 
         # add the current book dataframe to the all books dataframe
         all_df = pd.concat([all_df, cur_df], ignore_index=True)
+
+    if verbosity:
+        print(f"\nTotal time taken: {time.time() - start_time} seconds")
 
     # initialize the map
     folium_map = folium.Map(
